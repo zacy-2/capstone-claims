@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Submit a claim</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{
+  --bg:var(--tg-theme-bg-color,#ffffff);--fg:var(--tg-theme-text-color,#15201d);
+  --muted:var(--tg-theme-hint-color,#6b7780);--accent:var(--tg-theme-button-color,#1d55c4);
+  --on-accent:var(--tg-theme-button-text-color,#ffffff);--card:var(--tg-theme-secondary-bg-color,#f1f4f3);
+  --bad:var(--tg-theme-destructive-text-color,#c0392b);--line:color-mix(in srgb,var(--muted) 30%,transparent);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:12px 14px 90px}
+h1{font-size:19px;margin:4px 0 2px}
+.lead{color:var(--muted);font-size:13px;margin:0 0 12px}
+section{background:var(--card);border-radius:12px;padding:12px;margin-bottom:12px}
+section>h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:600}
+label.f{display:block;margin-bottom:10px;font-size:13px;color:var(--muted)}
+label.f>span{display:block;margin-bottom:4px}
+input,select{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:0}
+small{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg label{border:1px solid var(--line);border-radius:10px;padding:8px 6px;text-align:center;font-size:13px;cursor:pointer;background:var(--bg)}
+.seg input{display:none}
+.seg label:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-weight:600}
+.chk{display:flex;gap:9px;align-items:flex-start;font-size:14px;margin:8px 0;color:var(--fg)}
+.chk input{width:18px;height:18px;margin-top:2px;flex:none;accent-color:var(--accent)}
+.note{font-size:13px;margin:0;color:var(--fg)}
+.docs li{margin:4px 0;font-size:13px}
+.docs{margin:0;padding-left:18px}
+.err{color:var(--bad);font-size:13px;margin:6px 0 0}
+[hidden]{display:none!important}
+#fallback{display:none;width:100%;padding:13px;border:0;border-radius:10px;background:var(--accent);color:var(--on-accent);font:600 15px inherit;margin-top:6px}
+</style>
+</head>
+<body>
+<h1>Submit a claim</h1>
+<p class="lead">One receipt per claim, after the item has arrived. Type details exactly as printed on the receipt. You'll send the photos in the chat next.</p>
+
+<form id="f" novalidate>
+<section>
+  <h2>What are you claiming?</h2>
+  <div class="seg" id="type">
+    <label><input type="radio" name="type" value="local" checked>In-store</label>
+    <label><input type="radio" name="type" value="online">Online</label>
+    <label><input type="radio" name="type" value="transport">Transport</label>
+  </div>
+</section>
+
+<section>
+  <h2>Details</h2>
+  <label class="f"><span>Transaction date</span><input type="date" id="date" required><small>Receipt or order date, not your bank statement date.</small></label>
+  <div data-show="local online">
+    <label class="f"><span>Supplier</span><input id="vendor" maxlength="60" placeholder="e.g. Continental Electronics"></label>
+    <label class="f"><span>Receipt / invoice / order no.</span><input id="refNo" maxlength="60" placeholder="e.g. INV-004213"></label>
+    <label class="f"><span>Items bought</span><input id="item" maxlength="160" placeholder="e.g. 2× 12V gear motor, 1× motor driver"></label>
+    <label class="f"><span>Category</span><select id="category"></select></label>
+    <div class="row">
+      <label class="f"><span>Currency</span><select id="cur"><option value="SGD">SGD</option><option value="FX">Foreign</option></select></label>
+      <label class="f"><span>Receipt shows GST?</span><select id="gst"><option value="no">No</option><option value="yes">Yes, tax invoice</option></select></label>
+    </div>
+    <div class="row" data-show="fx">
+      <label class="f"><span>Currency code</span><input id="fxCode" maxlength="5" placeholder="CNY"></label>
+      <label class="f"><span>Foreign amount</span><input id="fxAmount" type="number" min="0" step="0.01" inputmode="decimal"></label>
+    </div>
+  </div>
+  <div data-show="transport">
+    <label class="f"><span>Mode</span><select id="mode"><option value="taxi">Taxi / Grab</option><option value="public">Bus / MRT</option><option value="bike">Mileage, motorcycle (S$0.15/km)</option><option value="car">Mileage, car (S$0.60/km)</option></select></label>
+    <div class="row">
+      <label class="f"><span>From</span><input id="from" maxlength="60" placeholder="SUTD"></label>
+      <label class="f"><span>To</span><input id="to" maxlength="60" placeholder="DSV warehouse"></label>
+    </div>
+    <label class="f"><span>Purpose</span><select id="purpose"><option>Project review meeting</option><option>Site survey</option><option>Prototype handover</option></select></label>
+    <div class="row" data-show="mileage">
+      <label class="f"><span>Distance (km, one way)</span><input id="km" type="number" min="0" step="0.1" inputmode="decimal"></label>
+      <label class="f"><span>ERP (S$)</span><input id="erp" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></label>
+    </div>
+  </div>
+  <label class="f"><span>Amount claimed (S$)</span><input id="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00"><small id="amtHint">Including GST. For foreign currency, the S$ on your statement.</small></label>
+  <label class="chk" data-show="local online"><input type="checkbox" id="partial"> Receipt includes personal items; I'm claiming only the project part</label>
+  <label class="f"><span>Comment for Concur</span><input id="notes" maxlength="200" placeholder="Optional"><small id="notesHint">Required if claiming only part of the receipt.</small></label>
+</section>
+
+<section>
+  <h2>Approvals</h2>
+  <p class="note" id="apprRule"></p>
+  <label class="chk" data-show="local online"><input type="checkbox" id="nonAllowable"> Item is on the non-allowable list and was approved by my instructor and the Capstone Office</label>
+</section>
+
+<section>
+  <h2>You'll send these next</h2>
+  <ul class="docs" id="docs"></ul>
+</section>
+
+<section>
+  <h2>Declaration</h2>
+  <label class="chk"><input type="checkbox" id="dRecv"> <span id="dRecvText">I have received the item.</span></label>
+  <label class="chk"><input type="checkbox" id="dProj"> For this Capstone project only; not claimed before or split with another claim.</label>
+  <label class="chk"><input type="checkbox" id="dRa"> Bought after our Risk Assessment was approved, or the Capstone Office agreed.</label>
+  <p class="err" id="err" hidden></p>
+</section>
+<button type="submit" id="fallback">Submit claim</button>
+</form>
+
+<script>
+const tg = window.Telegram && Telegram.WebApp;
+const CATS = ["Electronics & sensors","Motors & actuators","Mechanical & structure","Cleaning module","Power & batteries","Fabrication & materials","Testing & tools","Misc"];
+const RATES = {bike:0.15, car:0.60};
+const $ = id => document.getElementById(id);
+$("category").innerHTML = CATS.map(c => `<option>${c}</option>`).join("");
+const d = new Date(); $("date").value = d.toISOString().slice(0,10);
+if (d.getTimezoneOffset() !== 0) { const l = new Date(d - d.getTimezoneOffset()*60000); $("date").value = l.toISOString().slice(0,10); }
+
+function docs(c){
+  const out=[];
+  if(c.type==="local"){out.push("Receipt or tax invoice (clear photo, whole receipt)","Photo of the item received");}
+  else if(c.type==="online"){out.push("Order screenshot (date, merchant, items, order no., total)","Delivery confirmation (status delivered)");if(c.gst)out.push("Tax invoice (GST was charged)");}
+  else{out.push("Prior approval email for the trip","Google Maps route with distance",c.purpose==="Site survey"?"Site survey report or photos":"Meeting minutes");
+    if(c.mode==="taxi")out.push("Taxi / Grab receipt");if(c.mode==="public")out.push("EZ-Link / SimplyGo fare record");if((c.mode==="bike"||c.mode==="car")&&c.erp>0)out.push("ERP record");}
+  if(c.type!=="transport"&&c.cur==="FX")out.push("Bank or card statement line for this purchase");
+  if(c.type!=="transport"&&c.amount>=100)out.push("Mentor approval email (S$100 and above)");
+  if(c.type!=="transport"&&c.nonAllowable)out.push("Approval from instructor and Capstone Office");
+  return out;
+}
+function read(){
+  const c={type:document.querySelector('input[name=type]:checked').value, mode:$("mode").value, cur:$("cur").value,
+    gst:$("gst").value==="yes", partial:$("partial").checked, nonAllowable:$("nonAllowable").checked,
+    km:+$("km").value||0, erp:+$("erp").value||0, purpose:$("purpose").value};
+  if(c.type==="transport"&&(c.mode==="bike"||c.mode==="car")){const a=Math.round((c.km*RATES[c.mode]+c.erp)*100)/100;$("amount").value=a?a.toFixed(2):"";$("amount").readOnly=true}
+  else $("amount").readOnly=false;
+  c.amount=Math.round((+$("amount").value||0)*100)/100;
+  return c;
+}
+function sync(){
+  const c=read(), on=new Set([c.type]);
+  if(c.type!=="transport"&&c.cur==="FX")on.add("fx");
+  if(c.type==="transport"&&(c.mode==="bike"||c.mode==="car"))on.add("mileage");
+  document.querySelectorAll("[data-show]").forEach(el=>el.hidden=!el.dataset.show.split(" ").some(t=>on.has(t)));
+  $("amtHint").textContent=c.type==="transport"?((c.mode==="bike"||c.mode==="car")?"Distance × rate + ERP. Claim each direction separately.":"Fare for one direction."):"Including GST. For foreign currency, the S$ on your statement.";
+  $("notesHint").textContent=c.partial?"Required: say which items are personal.":"Required if claiming only part of the receipt.";
+  $("apprRule").textContent=c.type==="transport"?"Transport needs approval before the trip (email screenshot).":(c.amount>=100?"S$100 and above: your mentor must have approved by email (Capstone Office cc'd) before you bought it.":"Under S$100: no approval email needed unless the item is non-allowable.");
+  $("dRecvText").textContent=c.type==="transport"?"The trip has taken place.":"I have received the item.";
+  $("docs").innerHTML=docs(c).map(x=>`<li>${x}</li>`).join("");
+  return c;
+}
+function missing(c){
+  const m=[];
+  if(!$("date").value)m.push("date");
+  if(c.type!=="transport"){
+    if(!$("vendor").value.trim())m.push("supplier");
+    if(!$("refNo").value.trim())m.push("receipt number");
+    if(!$("item").value.trim())m.push("items");
+    if(c.cur==="FX"&&(!$("fxCode").value.trim()||!(+$("fxAmount").value>0)))m.push("foreign currency and amount");
+    if(c.partial&&!$("notes").value.trim())m.push("comment on personal items");
+  }else{
+    if(!$("from").value.trim()||!$("to").value.trim())m.push("from and to");
+    if((c.mode==="bike"||c.mode==="car")&&!(c.km>0))m.push("distance");
+  }
+  if(!(c.amount>0))m.push("amount");
+  [["dRecv","declaration: received"],["dProj","declaration: project only"],["dRa","declaration: risk assessment"]].forEach(([id,l])=>{if(!$(id).checked)m.push(l)});
+  return m;
+}
+function payload(c){
+  const tr=c.type==="transport";
+  const p={v:1,t:c.type,d:$("date").value,a:c.amount,n:$("notes").value.trim()};
+  if(tr){Object.assign(p,{m:c.mode,f:$("from").value.trim(),o:$("to").value.trim(),p:c.purpose,k:c.km,e:c.erp});}
+  else{Object.assign(p,{s:$("vendor").value.trim(),r:$("refNo").value.trim(),i:$("item").value.trim(),c:$("category").value,
+    g:c.gst?1:0,x:c.partial?1:0,na:c.nonAllowable?1:0});
+    if(c.cur==="FX"){p.fc=$("fxCode").value.trim().toUpperCase();p.fa=+$("fxAmount").value;}}
+  return JSON.stringify(p);
+}
+function submit(){
+  const c=sync(), m=missing(c), e=$("err");
+  if(m.length){e.textContent="Still needed: "+m.join(", ");e.hidden=false;tg&&tg.HapticFeedback&&tg.HapticFeedback.notificationOccurred("error");e.scrollIntoView({block:"center"});return}
+  e.hidden=true;
+  if(tg&&tg.initData!==undefined&&tg.sendData){tg.sendData(payload(c));}
+  else{e.textContent="Open this form from the bot's 🧾 Submit claim button in Telegram.";e.hidden=false;}
+}
+document.getElementById("f").addEventListener("input",sync);
+document.getElementById("f").addEventListener("change",sync);
+document.getElementById("f").addEventListener("submit",ev=>{ev.preventDefault();submit()});
+sync();
+if(tg&&tg.MainButton){tg.ready();tg.expand();tg.MainButton.setText("Submit claim");tg.MainButton.show();tg.MainButton.onClick(submit);}
+else{$("fallback").style.display="block";}
+</script>
+</body>
+</html>
